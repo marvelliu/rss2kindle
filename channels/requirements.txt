@@ -1,0 +1,4 @@
+sendgrid
+
+jinja2
+feedparser
