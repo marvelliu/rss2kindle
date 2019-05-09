@@ -14,13 +14,8 @@ from sendgrid.helpers.mail import (
          Mail, Attachment, FileContent, FileName,
          FileType, Disposition, ContentId)
 import base64
-
-
-from_mail = 'liuwenmao@126.com'
-to_mail = 'marvel1983@kindle.cn'
-api_key='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'
-tmp_dir = '/tmp/kindle'
-kindle_gen = '../kindlegen/kindlegen'
+import config
+import resize
 
 feeds_file = sys.argv[1]
 catagory = sys.argv[2]
@@ -33,20 +28,23 @@ f.close()
 
 date = date.today().isoformat()
 title = "Daily "+catagory+" "+date
-feed_num = dailykindle.build(feeds, tmp_dir, title, timedelta(1))
+feed_num = dailykindle.build(feeds, config.tmp_dir, title, timedelta(1))
 if not feed_num == 0:
-    dailykindle.mobi(tmp_dir+'/daily.opf', kindle_gen)
+    print "resize "+config.tmp_dir + '/images/'
+    resize.resize_dir(config.tmp_dir + '/images/')
+
+    dailykindle.mobi(config.tmp_dir+'/daily.opf', config.kindle_gen)
     
     
     date = time.strftime("%m/%d/%Y")
     
     message = Mail(
-        from_email=from_mail,
-        to_emails=to_mail,
+        from_email=config.from_mail,
+        to_emails=config.to_mail,
         subject='Daily RSS'+ date,
         html_content='RSS DAILY ' + date)
     
-    file_path = tmp_dir+'/daily.mobi'
+    file_path = config.tmp_dir+'/daily.mobi'
     with open(file_path, 'rb') as f:
         data = f.read()
         f.close()
@@ -61,7 +59,7 @@ if not feed_num == 0:
     message.attachment = attachment 
     
     try:
-        sg = SendGridAPIClient(api_key)
+        sg = SendGridAPIClient(config.api_key)
         response = sg.send(message)
         print(response.status_code)
         print(response.body)

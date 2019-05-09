@@ -1,0 +1,7 @@
+
+from_mail = 'you@126.com'
+to_mail = 'you@kindle.cn'
+api_key=''
+tmp_dir = '/tmp/kindle'
+kindle_gen = '../kindlegen/kindlegen'
+

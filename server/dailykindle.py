@@ -9,38 +9,44 @@ import uuid
 import urllib2
 import os
 import hashlib
+import requests
+import config
+import resize
 
 
-
-tmp_dir = '/tmp/kindle'
 templates_env = Environment(loader=PackageLoader('dailykindle', 'templates'))
 ROOT = path.dirname(path.abspath(__file__))
 
 
-def download_file(url, f):
-    filedata = urllib2.urlopen(url)
-    datatowrite = filedata.read()
+def download_file(url, local_file):
+    request = requests.get(url, timeout=100, stream=True)
 
-    with open(f, 'wb') as f:  
-            f.write(datatowrite)
+    try:
+        with open(local_file, 'wb') as f:  
+            for chunk in request.iter_content(1024 * 1024):
+                f.write(chunk)
+    except:
+        pass
+
 
 def update_link(content):
-    global tmp_dir
-    reg = re.compile('src="(.*?\.(jpg|jpeg|png|gif|bmp|JPG|JPEG|PNG|GIF|BMP))"')
-    img_dir = tmp_dir + '/images/'
+    reg = re.compile('src="(.*?\.(jpg|jpeg|png|gif|bmp|JPG|JPEG|PNG|GIF|BMP)(.*?))"')
+    img_dir = config.tmp_dir + '/images/'
     if not os.path.exists(img_dir):
         os.mkdir(img_dir)
     imglist = re.findall(reg, content)
     print imglist
     for _img in imglist:
-        img = _img[0]
+        ori_img = _img[0]
+        img = ori_img.rstrip(_img[2])
         suffix = img.rsplit('.', 1)[1]
         f = img_dir + hashlib.md5(img.encode('utf-8')).hexdigest() +"."+suffix
-        content = content.replace(img, f)
-        if os.path.exists(f):
-           print "file exists, skip"
+        content = content.replace(ori_img, f)
+        if os.path.exists(f) or os.path.exists(f+".origin"):
+           print "file exists, skip %s"%f
            continue
-        download_file(img, f) 
+        print "%s\t%s"%(img, f)
+        download_file(img, f+".origin") 
     return content
 
 
@@ -58,6 +64,7 @@ def build(feeds_urls, output_dir, title, max_old=None):
         max_old = timedelta.max
 
     # Give the feeds URLs to Feedparser to have nicely usable feed objects.
+    print feeds_urls
     feeds = [feedparser.parse(feed_url) for feed_url in feeds_urls]
     #print feeds
     # Parse the feeds and grave useful information to build a structure
@@ -180,6 +187,9 @@ python dailykindle.py <output dir> <day|week> <kindle_gen> <feed_url_1> [<feed_u
     #for item in argv[1]:
     #    print "[[[[" + item + "]]]]"
     build(argv[4:], argv[1], "KindleDaily", length)
+
+    print "resize "+config.tmp_dir + '/images/'
+    resize.resize_dir(config.tmp_dir + '/images/')
     
     print("-> Build the MOBI file using KindleGen...")
     mobi(path.join(argv[1], 'daily.opf'), argv[3])
